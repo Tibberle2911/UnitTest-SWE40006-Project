@@ -25,29 +25,11 @@ public class NodeServerFixture : IDisposable
         // Install npm packages (cross-platform)
         InstallNodeDependencies(appRoot);
 
-        // Start Node.js server
+        // Start Node.js server (cross-platform)
         var port = 3456;
-        _process = new Process
-        {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = "node",
-                Arguments = "server.js",
-                WorkingDirectory = appRoot,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                CreateNoWindow = true,
-                Environment = { 
-                    ["PORT"] = port.ToString(),
-                    ["EVENT_FILE"] = "eventlistTest.txt"
-                }
-            }
-        };
+        _process = StartNodeServer(appRoot, port);
 
-        _process.Start();
-
-        // Wait for server to start
+        // Wait for server to become responsive
         WaitForServerStart(_process, port);
 
         Client = new HttpClient { BaseAddress = new Uri($"http://localhost:{port}") };
@@ -98,15 +80,86 @@ public class NodeServerFixture : IDisposable
 
     private void WaitForServerStart(Process process, int port)
     {
-        var timeout = DateTime.Now.AddSeconds(20);
-        while (DateTime.Now < timeout)
+        var timeoutAt = DateTime.UtcNow.AddSeconds(40);
+        using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(1) };
+        var url = $"http://localhost:{port}/";
+
+        while (DateTime.UtcNow < timeoutAt)
         {
-            var line = process.StandardOutput.ReadLine();
-            if (line != null && line.Contains($"listening on http://localhost:{port}"))
-                return;
-            Thread.Sleep(100);
+            if (process.HasExited)
+            {
+                var stdout = SafeRead(process.StandardOutput);
+                var stderr = SafeRead(process.StandardError);
+                throw new Exception($"Server process exited early with code {process.ExitCode}.\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}");
+            }
+            try
+            {
+                var resp = http.GetAsync(url).GetAwaiter().GetResult();
+                if ((int)resp.StatusCode < 500)
+                {
+                    return; // server is up
+                }
+            }
+            catch
+            {
+                // ignore until ready
+            }
+            Thread.Sleep(250);
         }
-        throw new Exception("Server did not start in time");
+
+        var so = SafeRead(process.StandardOutput);
+        var se = SafeRead(process.StandardError);
+        throw new Exception($"Server did not start in time\nSTDOUT:\n{so}\nSTDERR:\n{se}");
+    }
+
+    private static string SafeRead(StreamReader reader)
+    {
+        try { return reader.ReadToEnd(); } catch { return string.Empty; }
+    }
+
+    private Process StartNodeServer(string workingDir, int port)
+    {
+        Process process;
+        if (OperatingSystem.IsWindows())
+        {
+            process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "node",
+                    Arguments = "server.js",
+                    WorkingDirectory = workingDir,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+        }
+        else
+        {
+            // Use bash to ensure PATH and Node resolution in CI
+            process = new Process
+            {
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "/usr/bin/env",
+                    Arguments = "bash -lc \"node server.js\"",
+                    WorkingDirectory = workingDir,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                }
+            };
+        }
+
+        // Set env regardless of platform
+        process.StartInfo.Environment["PORT"] = port.ToString();
+        process.StartInfo.Environment["EVENT_FILE"] = "eventlistTest.txt";
+
+        process.Start();
+        return process;
     }
 
     public void Dispose()
