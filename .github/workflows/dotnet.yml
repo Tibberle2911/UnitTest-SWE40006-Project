@@ -1,28 +1,37 @@
-# This workflow will build a .NET project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-net
-
-name: .NET
+name: .NET CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ main ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ main ]
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
-    - uses: actions/checkout@v4
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-    - name: Restore dependencies
-      run: dotnet restore
-    - name: Build
-      run: dotnet build --no-restore
-    - name: Test
-      run: dotnet test --no-build --verbosity normal
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Restore
+        run: dotnet restore tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+
+      - name: Build (Debug)
+        run: dotnet build -c Debug tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+
+      - name: Install Playwright browsers (Linux)
+        shell: bash
+        run: bash tests/TaskTracker.V1.Tests/bin/Debug/net9.0/playwright.sh install --with-deps
+
+      - name: Test
+        run: dotnet test -c Debug --no-build tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj --logger "trx;LogFileName=test-results.trx"
