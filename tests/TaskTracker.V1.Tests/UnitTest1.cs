@@ -22,8 +22,8 @@ public class NodeServerFixture : IDisposable
         // Clear previous test data
         File.WriteAllText(_eventFile, string.Empty);
 
-        // Install npm packages
-        RunCommand("cmd.exe", "/c npm install --no-audit --no-fund", appRoot);
+        // Install npm packages (cross-platform)
+        InstallNodeDependencies(appRoot);
 
         // Start Node.js server
         var port = 3456;
@@ -78,6 +78,22 @@ public class NodeServerFixture : IDisposable
         });
         
         process?.WaitForExit(120000); // 2 minutes timeout
+    }
+
+    private void InstallNodeDependencies(string workingDir)
+    {
+        // Prefer reproducible installs
+        var npmArgs = "ci --no-audit --no-fund";
+        if (OperatingSystem.IsWindows())
+        {
+            // Use cmd on Windows to resolve npm.cmd
+            RunCommand("cmd.exe", $"/c npm {npmArgs}", workingDir);
+        }
+        else
+        {
+            // Use bash on Linux/macOS to ensure PATH resolution of npm
+            RunCommand("/usr/bin/env", $"bash -lc \"npm {npmArgs}\"", workingDir);
+        }
     }
 
     private void WaitForServerStart(Process process, int port)
