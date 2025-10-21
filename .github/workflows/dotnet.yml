@@ -7,34 +7,8 @@ on:
     branches: [ main ]
 
 jobs:
-  dotnet_build:
-    name: Build tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET 9 SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
-      - name: Restore
-        run: dotnet restore tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
-
-      - name: Build (Debug)
-        run: dotnet build -c Debug tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
-
-      - name: Publish build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: dotnet-test-binaries
-          path: |
-            tests/TaskTracker.V1.Tests/bin/Debug/net9.0/
-            tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
-
-  node_deps:
-    name: Install Node deps
+  install_ci:
+    name: Install CI
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -57,10 +31,71 @@ jobs:
           name: node-deps
           path: node_modules.tgz
 
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore (tests)
+        run: dotnet restore tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [install_ci]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Build (Debug)
+        run: dotnet build -c Debug tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+
+      - name: Publish .NET build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-binaries
+          path: |
+            tests/TaskTracker.V1.Tests/bin/Debug/net9.0/
+            tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+
+  build_artifacts:
+    name: Build artifacts
+    runs-on: ubuntu-latest
+    needs: [install_ci, build]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Node deps
+        uses: actions/download-artifact@v4
+        with:
+          name: node-deps
+          path: .
+
+      - name: Download .NET build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-test-binaries
+          path: tests/TaskTracker.V1.Tests/bin/Debug/net9.0/
+
+      - name: Create CI bundle artifact
+        run: tar -czf ci-bundle.tgz node_modules.tgz tests/TaskTracker.V1.Tests/bin/Debug/net9.0/ tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj package.json package-lock.json server.js public eventlist.txt
+
+      - name: Upload CI bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-bundle
+          path: ci-bundle.tgz
+
   test:
     name: Run tests
     runs-on: ubuntu-latest
-    needs: [dotnet_build, node_deps]
+    needs: [build_artifacts]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -75,27 +110,29 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Download .NET build artifacts
+      - name: Download CI bundle
         uses: actions/download-artifact@v4
         with:
-          name: dotnet-test-binaries
-          path: tests/TaskTracker.V1.Tests/bin/Debug/net9.0/
-
-      - name: Download Node deps
-        uses: actions/download-artifact@v4
-        with:
-          name: node-deps
+          name: ci-bundle
           path: .
 
-      - name: Unpack Node deps
-        run: tar -xzf node_modules.tgz
+      - name: Unpack CI bundle
+        run: |
+          tar -xzf ci-bundle.tgz
+          tar -xzf node_modules.tgz
 
       - name: Test
-        run: dotnet test -c Debug --no-build tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj --logger "trx;LogFileName=test-results.trx"
+        run: dotnet test -c Debug --no-build tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj --logger "trx;LogFileName=test-results.trx" --results-directory artifacts/TestResults
 
       - name: Upload TRX results
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: test-results-trx
-          path: tests/TaskTracker.V1.Tests/TestResults/
+          path: artifacts/TestResults/
+
+      - name: Publish unit test results
+        if: always()
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: artifacts/TestResults/**/*.trx
