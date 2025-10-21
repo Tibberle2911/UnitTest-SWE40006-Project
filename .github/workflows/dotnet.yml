@@ -23,6 +23,9 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Install Node dependencies
+        run: npm ci --no-audit --no-fund
+
       - name: Restore
         run: dotnet restore tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
 
