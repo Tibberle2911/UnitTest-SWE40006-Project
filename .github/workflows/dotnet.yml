@@ -29,9 +29,13 @@ jobs:
       - name: Build (Debug)
         run: dotnet build -c Debug tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
 
+      - name: Install Playwright CLI
+        run: |
+          dotnet tool install --global Microsoft.Playwright.CLI
+          echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
+
       - name: Install Playwright browsers (Linux)
-        shell: bash
-        run: bash tests/TaskTracker.V1.Tests/bin/Debug/net9.0/playwright.sh install --with-deps
+        run: playwright install --with-deps
 
       - name: Test
         run: dotnet test -c Debug --no-build tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj --logger "trx;LogFileName=test-results.trx"
