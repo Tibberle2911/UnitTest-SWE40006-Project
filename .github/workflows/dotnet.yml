@@ -1,4 +1,4 @@
-name: .NET CI
+name: .NET CI (v1.0)
 
 on:
   push:
@@ -7,8 +7,60 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  dotnet_build:
+    name: Build tests
     runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 9 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Restore
+        run: dotnet restore tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+
+      - name: Build (Debug)
+        run: dotnet build -c Debug tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+
+      - name: Publish build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dotnet-test-binaries
+          path: |
+            tests/TaskTracker.V1.Tests/bin/Debug/net9.0/
+            tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+
+  node_deps:
+    name: Install Node deps
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: npm ci
+        run: npm ci --no-audit --no-fund
+
+      - name: Pack node_modules
+        run: tar -czf node_modules.tgz node_modules package.json package-lock.json server.js public eventlist.txt
+
+      - name: Upload Node deps artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-deps
+          path: node_modules.tgz
+
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    needs: [dotnet_build, node_deps]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,14 +75,27 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install Node dependencies
-        run: npm ci --no-audit --no-fund
+      - name: Download .NET build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dotnet-test-binaries
+          path: tests/TaskTracker.V1.Tests/bin/Debug/net9.0/
 
-      - name: Restore
-        run: dotnet restore tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+      - name: Download Node deps
+        uses: actions/download-artifact@v4
+        with:
+          name: node-deps
+          path: .
 
-      - name: Build (Debug)
-        run: dotnet build -c Debug tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
+      - name: Unpack Node deps
+        run: tar -xzf node_modules.tgz
 
       - name: Test
         run: dotnet test -c Debug --no-build tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload TRX results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-trx
+          path: tests/TaskTracker.V1.Tests/TestResults/
