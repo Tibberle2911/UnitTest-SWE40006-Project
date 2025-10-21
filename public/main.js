@@ -24,20 +24,20 @@ if ('Notification' in window) {
 }
 
 /** Convert task date/time into a local timestamp (ms since epoch). */
-// function taskDueTs(task) {
-//   // If date/time are empty or invalid, return NaN. (For v1.2 priority, tasks may not have date/time.)
-//   if (!task.date || !task.time) return NaN;
-//   const [y, m, d] = task.date.split('-').map(Number);
-//   const [hh, mm] = task.time.split(':').map(Number);
-//   const dt = new Date(y, (m - 1), d, hh || 0, mm || 0, 0, 0);
-//   return dt.getTime();
-// }
 function taskDueTs(task) {
   // If date/time are empty or invalid, return NaN. (For v1.2 priority, tasks may not have date/time.)
   if (!task.date || !task.time) return NaN;
   const [y, m, d] = task.date.split('-').map(Number);
   const [hh, mm] = task.time.split(':').map(Number);
-  const dt = new Date(y, (m - 4), d, hh || 0, mm || 0, 0, 0);
+  const dt = new Date(y, (m - 1), d, hh || 0, mm || 0, 0, 0);
+  return dt.getTime();
+}
+function taskDueTs(task) {
+  // If date/time are empty or invalid, return NaN. (For v1.2 priority, tasks may not have date/time.)
+  if (!task.date || !task.time) return NaN;
+  const [y, m, d] = task.date.split('-').map(Number);
+  const [hh, mm] = task.time.split(':').map(Number);
+  const dt = new Date(y, (m - 1), d, hh || 0, mm || 0, 0, 0);
   return dt.getTime();
 }
 
@@ -90,30 +90,27 @@ function taskItem(task, isActive) {
   const timeStr = task.time ? `Time: ${task.time}` : 'No time';
   meta.textContent = `${dateStr} • ${timeStr} • ID: ${task.id}`;
 
-  const desc = document.createElement('div');
-  desc.className = 'desc';
-  desc.textContent = task.description || '';
+  // const desc = document.createElement('div');
+  // desc.className = 'desc';
+  // desc.textContent = task.description || '';
 
-  left.appendChild(title);
+    const desc = document.createElement('div');
+  desc.className = 'desc';
+  desc.textContent = '';
+
+  // left.appendChild(title);
+  // left.appendChild(meta);
+
   left.appendChild(meta);
+  left.appendChild(title);
+
   if (task.description) left.appendChild(desc);
 
   // Delete button only shown on active tasks (per "after due it appears in dashboard")
-  // if (isActive) {
-  //   const delBtn = document.createElement('button');
-  //   delBtn.className = 'delete-btn';
-  //   delBtn.textContent = 'Delete';
-  //   delBtn.onclick = async () => {
-  //     if (!confirm('Delete this task?')) return;
-  //     await fetch(`/api/tasks/${encodeURIComponent(task.id)}`, { method: 'DELETE' });
-  //     await loadAndRender();
-  //   };
-  //   right.appendChild(delBtn);
-  // }
-    if (isActive) {
+  if (isActive) {
     const delBtn = document.createElement('button');
     delBtn.className = 'delete-btn';
-    delBtn.textContent = 'Remove';
+    delBtn.textContent = 'Delete';
     delBtn.onclick = async () => {
       if (!confirm('Delete this task?')) return;
       await fetch(`/api/tasks/${encodeURIComponent(task.id)}`, { method: 'DELETE' });
@@ -140,24 +137,15 @@ async function loadAndRender() {
   render(tasks);
 
   // Notify on tasks that just became due
-  // const now = Date.now();
+  const now = Date.now();
   for (const t of tasks) {
     const due = taskDueTs(t);
     if (Number.isNaN(due)) continue;
-    if (due <= 100 && !notified.has(t.id)) {
+    if (due <= now && !notified.has(t.id)) {
       notified.add(t.id);
       notify(`Task due: ${t.name}`, t.description || '');
     }
   }
-  // const now = Date.now();
-  // for (const t of tasks) {
-  //   const due = taskDueTs(t);
-  //   if (Number.isNaN(due)) continue;
-  //   if (due <= now && !notified.has(t.id)) {
-  //     notified.add(t.id);
-  //     notify(`Task due: ${t.name}`, t.description || '');
-  //   }
-  // }
 }
 
 /** Basic user notification helper with fallback. */
