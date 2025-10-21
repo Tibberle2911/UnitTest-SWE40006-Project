@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Tracker v1.0 (File-based)</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!--
+    Version 1.0 Frontend
+    - Simple, no frameworks. Pure HTML/CSS/JS.
+    - Two lists:
+      (1) Scheduled (created but not yet due)
+      (2) Dashboard (due tasks shown after their date/time)
+    - Notification: Uses the Web Notifications API (with fallback to alert).
+    - Future versions:
+      * v1.1 Themes: toggle data-theme on <html> or <body> (see CSS variables).
+      * v1.2 Priority: UI can add a priority flag; then always render at top in dashboard.
+  -->
+
+  <header class="app-header">
+    <h1>Task Tracker <small>v1.0</small></h1>
+    <!-- Placeholder for v1.1 themes (hook exists, no UI here in v1.0) -->
+  </header>
+
+  <main class="container">
+    <!-- Task creation form -->
+    <section class="card">
+      <h2>Create Task</h2>
+      <form id="taskForm">
+        <div class="row">
+          <label for="name">Name *</label>
+          <input id="name" name="name" type="text" required placeholder="e.g., Deploy demo app">
+        </div>
+
+        <div class="row two-col">
+          <div>
+            <label for="date">Date</label>
+            <input id="date" name="date" type="date">
+          </div>
+          <div>
+            <label for="time">Time</label>
+            <input id="time" name="time" type="time">
+          </div>
+        </div>
+
+        <div class="row">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="3" placeholder="Optional details..."></textarea>
+        </div>
+
+        <div class="row actions">
+          <button type="submit">Add Task</button>
+        </div>
+      </form>
+      <p class="hint">Note: Notifications require permission; your browser may prompt you.</p>
+    </section>
+
+    <!-- Scheduled tasks (not yet due) -->
+    <section class="card">
+      <h2>Scheduled</h2>
+      <ul id="scheduledList" class="task-list"></ul>
+    </section>
+
+    <!-- Dashboard: tasks that are due (arrived) -->
+    <section class="card">
+      <h2>Dashboard (Active)</h2>
+      <ul id="dashboardList" class="task-list"></ul>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>File-backed demo • <code>eventlist.txt</code> lives on the server.</p>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>

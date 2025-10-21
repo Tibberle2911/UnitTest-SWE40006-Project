@@ -1,0 +1,14 @@
+{
+  "name": "task-tracker-demo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Version 1.0 - Simple task tracker for DevOps pipeline demo (file-based storage).",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  }
+}

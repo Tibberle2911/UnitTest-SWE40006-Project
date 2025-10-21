@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <Prefer32Bit>false</Prefer32Bit>
+  </PropertyGroup>
+</Project>
