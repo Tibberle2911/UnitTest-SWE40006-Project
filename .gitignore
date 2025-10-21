@@ -24,9 +24,5 @@ tests/**/Playwright/.cache/
 .DS_Store
 Thumbs.db
 
-# Event logs
-/eventlist.txt
-/eventlistTest.txt
-
 # VS Code
 .vscode/
