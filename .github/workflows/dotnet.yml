@@ -129,9 +129,7 @@ jobs:
       - name: Test
         run: |
           mkdir -p artifacts/TestResults
-          ls -la tests/TaskTracker.V1.Tests/bin/Debug/net9.0 || true
-          ls -la tests/TaskTracker.V1.Tests/bin/Debug/net9.0/*.dll || true
-          dotnet vstest tests/TaskTracker.V1.Tests/bin/Debug/net9.0/TaskTracker.V1.Tests.dll --logger:"trx;LogFileName=test-results.trx" --ResultsDirectory:artifacts/TestResults
+          dotnet test -c Debug tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj --logger "trx;LogFileName=test-results.trx" --results-directory artifacts/TestResults
 
       - name: List TRX files (debug)
         if: always()
