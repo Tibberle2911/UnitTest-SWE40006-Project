@@ -35,7 +35,7 @@ jobs:
           echo "$HOME/.dotnet/tools" >> $GITHUB_PATH
 
       - name: Install Playwright browsers (Linux)
-        run: playwright install --with-deps
+        run: playwright install --with-deps -p tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj
 
       - name: Test
         run: dotnet test -c Debug --no-build tests/TaskTracker.V1.Tests/TaskTracker.V1.Tests.csproj --logger "trx;LogFileName=test-results.trx"
